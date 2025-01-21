@@ -2,6 +2,7 @@
 
 ## sel-0.0.3.0
 
+* Add constant time hex encoding [#176](https://github.com/haskell-cryptography/libsodium-bindings/pull/176)
 * Support `text-display` 1.0.0.0
 * Replace usages of `memcpy` with `Foreign.copyBytes` [#172](https://github.com/haskell-cryptography/libsodium-bindings/pull/172)
 * Add constant-time pointer comparison [#171](https://github.com/haskell-cryptography/libsodium-bindings/pull/171)

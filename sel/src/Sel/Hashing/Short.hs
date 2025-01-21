@@ -66,6 +66,7 @@ import LibSodium.Bindings.ShortHashing
   , cryptoShortHashX24KeyGen
   )
 import Sel.Internal
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $introduction
 --
@@ -161,11 +162,12 @@ shortHashToBinary (ShortHash hashFPtr) =
     0
     (fromIntegral @CSize @Int cryptoShortHashSipHashX24Bytes)
 
--- | Convert a 'ShortHash' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'ShortHash' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 shortHashToHexByteString :: ShortHash -> StrictByteString
-shortHashToHexByteString = Base16.extractBase16 . Base16.encodeBase16' . shortHashToBinary
+shortHashToHexByteString (ShortHash hashForeignPtr) =
+  binaryToHex hashForeignPtr cryptoShortHashSipHashX24Bytes
 
 -- | Convert a 'ShortHash' to a strict hexadecimal-encoded 'Text'.
 --
@@ -224,11 +226,12 @@ shortHashKeyToBinary (ShortHashKey hashKeyFPtr) =
     0
     (fromIntegral @CSize @Int cryptoShortHashSipHashX24KeyBytes)
 
--- | Convert a 'ShortHash' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'ShortHashKey' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 shortHashKeyToHexByteString :: ShortHashKey -> StrictByteString
-shortHashKeyToHexByteString = Base16.extractBase16 . Base16.encodeBase16' . shortHashKeyToBinary
+shortHashKeyToHexByteString (ShortHashKey hashKeyForeignPtr) =
+  binaryToHex hashKeyForeignPtr cryptoShortHashSipHashX24KeyBytes
 
 -- | Convert a 'ShortHash' to a strict hexadecimal-encoded 'Text'.
 --

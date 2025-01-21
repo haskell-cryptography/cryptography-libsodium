@@ -80,6 +80,7 @@ import LibSodium.Bindings.CryptoBox
 import LibSodium.Bindings.Random (randombytesBuf)
 import LibSodium.Bindings.SecureMemory (finalizerSodiumFree, sodiumFree, sodiumMalloc)
 import Sel.Internal
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $introduction
 -- Public-key authenticated encryption allows a sender to encrypt a confidential message
@@ -246,17 +247,14 @@ newKeyPairWith action = do
   action publicKeyPtr secretKeyPtr
   pure (PublicKey publicKeyForeignPtr, SecretKey secretKeyForeignPtr)
 
--- | Convert a 'SecretKey' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'SecretKey' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- ⚠️  Be prudent as to where you store it!
 --
 -- @since 0.0.1.0
 unsafeSecretKeyToHexByteString :: SecretKey -> StrictByteString
 unsafeSecretKeyToHexByteString (SecretKey secretKeyForeignPtr) =
-  Base16.extractBase16 . Base16.encodeBase16' $
-    BS.fromForeignPtr0
-      (Foreign.castForeignPtr @CUChar @Word8 secretKeyForeignPtr)
-      (fromIntegral @CSize @Int cryptoBoxSecretKeyBytes)
+  binaryToHex secretKeyForeignPtr cryptoBoxSecretKeyBytes
 
 -- | A random number that must only be used once per exchanged message.
 -- It does not have to be confidential.
@@ -322,15 +320,12 @@ nonceFromHexByteString hexNonce = unsafeDupablePerformIO $
         pure $ Right $ Nonce (Foreign.castForeignPtr @CChar @CUChar nonceForeignPtr)
     Left msg -> pure $ Left msg
 
--- | Convert a 'Nonce' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'Nonce' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 nonceToHexByteString :: Nonce -> StrictByteString
 nonceToHexByteString (Nonce nonceForeignPtr) =
-  Base16.extractBase16 . Base16.encodeBase16' $
-    BS.fromForeignPtr0
-      (Foreign.castForeignPtr @CUChar @Word8 nonceForeignPtr)
-      (fromIntegral @CSize @Int cryptoBoxNonceBytes)
+  binaryToHex nonceForeignPtr cryptoBoxNonceBytes
 
 -- | A ciphertext consisting of an encrypted message and an authentication tag.
 --
@@ -407,13 +402,14 @@ cipherTextFromHexByteString hexByteString = unsafeDupablePerformIO $
 cipherTextToHexText :: CipherText -> Text
 cipherTextToHexText = Base16.extractBase16 . Base16.encodeBase16 . cipherTextToBinary
 
--- | Convert a 'CipherText' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'CipherText' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- ⚠️  Be prudent as to where you store it!
 --
 -- @since 0.0.1.0
 cipherTextToHexByteString :: CipherText -> StrictByteString
-cipherTextToHexByteString = Base16.extractBase16 . Base16.encodeBase16' . cipherTextToBinary
+cipherTextToHexByteString (CipherText messageLength fPtr) =
+  binaryToHex fPtr (cryptoBoxMACBytes + fromIntegral messageLength)
 
 -- | Convert a 'CipherText' to a binary 'StrictByteString'.
 --

@@ -58,6 +58,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.Base16.Types as Base16
 import Data.Kind (Type)
 import Sel.Internal
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $usage
 --
@@ -134,11 +135,12 @@ instance Show Hash where
 hashToHexText :: Hash -> Text
 hashToHexText = Base16.extractBase16 . Base16.encodeBase16 . hashToBinary
 
--- | Convert a 'Hash' to a strict, hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'Hash' to a strict, hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 hashToHexByteString :: Hash -> StrictByteString
-hashToHexByteString = Base16.extractBase16 . Base16.encodeBase16' . hashToBinary
+hashToHexByteString (Hash hashForeignPtr) =
+  binaryToHex hashForeignPtr cryptoHashSHA512Bytes
 
 -- | Convert a 'Hash' to a binary 'StrictByteString'.
 --

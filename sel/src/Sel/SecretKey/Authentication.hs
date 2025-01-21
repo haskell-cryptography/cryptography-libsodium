@@ -33,7 +33,6 @@ module Sel.SecretKey.Authentication
   ) where
 
 import Control.Monad (void, when)
-import qualified Data.Base16.Types as Base16
 import Data.ByteString (StrictByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base16 as Base16
@@ -42,10 +41,9 @@ import qualified Data.ByteString.Unsafe as BS
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Display (Display, OpaqueInstance (..), ShowInstance (..))
-import Data.Word (Word8)
 import Foreign (ForeignPtr)
 import qualified Foreign
-import Foreign.C (CChar, CSize, CUChar, CULLong, throwErrno)
+import Foreign.C (CChar, CUChar, CULLong, throwErrno)
 import System.IO.Unsafe (unsafeDupablePerformIO)
 
 import LibSodium.Bindings.CryptoAuth
@@ -57,6 +55,7 @@ import LibSodium.Bindings.CryptoAuth
   )
 import LibSodium.Bindings.SecureMemory
 import Sel.Internal
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $introduction
 -- The 'authenticate' function computes an authentication tag for a message and a secret key,
@@ -204,17 +203,14 @@ authenticationKeyFromHexByteString hexKey = unsafeDupablePerformIO $
         else pure $ Left $ Text.pack "Authentication Key is too short"
     Left msg -> pure $ Left msg
 
--- | Convert a 'AuthenticationKey to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'AuthenticationKey to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- ⚠️  Be prudent as to where you store it!
 --
 -- @since 0.0.1.0
 unsafeAuthenticationKeyToHexByteString :: AuthenticationKey -> StrictByteString
 unsafeAuthenticationKeyToHexByteString (AuthenticationKey authenticationKeyForeignPtr) =
-  Base16.extractBase16 . Base16.encodeBase16' $
-    BS.fromForeignPtr0
-      (Foreign.castForeignPtr @CUChar @Word8 authenticationKeyForeignPtr)
-      (fromIntegral @CSize @Int cryptoAuthKeyBytes)
+  binaryToHex authenticationKeyForeignPtr cryptoAuthKeyBytes
 
 -- | A secret authentication key of size 'cryptoAuthBytes'.
 --
@@ -246,16 +242,12 @@ instance Ord AuthenticationTag where
 instance Show AuthenticationTag where
   show = BS.unpackChars . authenticationTagToHexByteString
 
--- | Convert an 'AuthenticationTag' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert an 'AuthenticationTag' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 authenticationTagToHexByteString :: AuthenticationTag -> StrictByteString
 authenticationTagToHexByteString (AuthenticationTag fPtr) =
-  Base16.extractBase16 $
-    Base16.encodeBase16' $
-      BS.fromForeignPtr0
-        (Foreign.castForeignPtr fPtr)
-        (fromIntegral cryptoAuthBytes)
+  binaryToHex fPtr cryptoAuthBytes
 
 -- | Create an 'AuthenticationTag' from a binary 'StrictByteString' that you have obtained on your own,
 -- usually from the network or disk.

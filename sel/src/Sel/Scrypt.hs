@@ -38,6 +38,7 @@ import Foreign hiding (void)
 import Foreign.C
 import LibSodium.Bindings.Scrypt
 import Sel.Internal
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $introduction
 --
@@ -115,12 +116,12 @@ scryptVerifyPassword bytestring (ScryptHash sh) = do
           (fromIntegral cStringLen)
       return (result == 0)
 
--- | Convert a 'ScryptHash' to a binary 'StrictByteString'.
+-- | Convert a 'ScryptHash' to a binary 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 scryptHashToByteString :: ScryptHash -> StrictByteString
 scryptHashToByteString (ScryptHash fPtr) =
-  BS.fromForeignPtr0 (Foreign.castForeignPtr fPtr) (fromIntegral @CSize @Int cryptoPWHashScryptSalsa208SHA256StrBytes)
+  binaryToHex (Foreign.castForeignPtr @CChar @CUChar fPtr) cryptoPWHashScryptSalsa208SHA256StrBytes
 
 -- | Convert a 'ScryptHash' to a hexadecimal-encoded 'Text'.
 --

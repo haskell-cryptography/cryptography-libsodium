@@ -52,7 +52,6 @@ module Sel.HMAC.SHA256
 
 import Control.Monad (void, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import qualified Data.Base16.Types as Base16
 import Data.ByteString (StrictByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base16 as Base16
@@ -82,6 +81,7 @@ import LibSodium.Bindings.SHA2
   )
 import LibSodium.Bindings.SecureMemory (finalizerSodiumFree, sodiumMalloc)
 import Sel.Internal (allocateWith, foreignPtrEqConstantTime, foreignPtrOrdConstantTime)
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $introduction
 -- The 'authenticate' function computes an authentication tag for a message and a secret key,
@@ -316,14 +316,14 @@ unsafeAuthenticationKeyToBinary (AuthenticationKey authenticationKeyForeignPtr) 
     (Foreign.castForeignPtr @CUChar @Word8 authenticationKeyForeignPtr)
     (fromIntegral @CSize @Int cryptoAuthHMACSHA256KeyBytes)
 
--- | Convert a 'AuthenticationKey to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'AuthenticationKey to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- ⚠️  Be prudent as to where you store it!
 --
 -- @since 0.0.1.0
 unsafeAuthenticationKeyToHexByteString :: AuthenticationKey -> StrictByteString
-unsafeAuthenticationKeyToHexByteString =
-  Base16.extractBase16 . Base16.encodeBase16' . unsafeAuthenticationKeyToBinary
+unsafeAuthenticationKeyToHexByteString (AuthenticationKey authenticationKeyForeignPtr) =
+  binaryToHex authenticationKeyForeignPtr cryptoAuthHMACSHA256KeyBytes
 
 -- | A secret authentication key of size 'cryptoAuthHMACSHA256Bytes'.
 --
@@ -355,14 +355,12 @@ instance Ord AuthenticationTag where
 instance Show AuthenticationTag where
   show = BS.unpackChars . authenticationTagToHexByteString
 
--- | Convert an 'AuthenticationTag' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert an 'AuthenticationTag' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 authenticationTagToHexByteString :: AuthenticationTag -> StrictByteString
-authenticationTagToHexByteString authenticationTag =
-  Base16.extractBase16 $
-    Base16.encodeBase16' $
-      authenticationTagToBinary authenticationTag
+authenticationTagToHexByteString (AuthenticationTag authenticationTagForeignPtr) =
+  binaryToHex authenticationTagForeignPtr cryptoAuthHMACSHA256Bytes
 
 -- | Convert an 'AuthenticationTag' to a binary 'StrictByteString'.
 --

@@ -70,6 +70,7 @@ import LibSodium.Bindings.Secretbox
   )
 import LibSodium.Bindings.SecureMemory
 import Sel.Internal
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $introduction
 -- "Authenticated Encryption" uses a secret key along with a single-use number
@@ -168,17 +169,14 @@ newSecretKeyWith action = do
   action ptr
   pure $ SecretKey fPtr
 
--- | Convert a 'SecretKey' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'SecretKey' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- ⚠️  Be prudent as to where you store it!
 --
 -- @since 0.0.1.0
 unsafeSecretKeyToHexByteString :: SecretKey -> StrictByteString
 unsafeSecretKeyToHexByteString (SecretKey secretKeyForeignPtr) =
-  Base16.extractBase16 . Base16.encodeBase16' $
-    BS.fromForeignPtr0
-      (Foreign.castForeignPtr @CUChar @Word8 secretKeyForeignPtr)
-      (fromIntegral @CSize @Int cryptoSecretboxKeyBytes)
+  binaryToHex secretKeyForeignPtr cryptoSecretboxKeyBytes
 
 -- | A random number that must only be used once per exchanged message.
 -- It does not have to be confidential.
@@ -247,15 +245,12 @@ nonceFromHexByteString hexNonce = unsafeDupablePerformIO $
         else pure $ Left $ Text.pack "Nonce is too short"
     Left msg -> pure $ Left msg
 
--- | Convert a 'Nonce' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'Nonce' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 nonceToHexByteString :: Nonce -> StrictByteString
 nonceToHexByteString (Nonce nonceForeignPtr) =
-  Base16.extractBase16 . Base16.encodeBase16' $
-    BS.fromForeignPtr0
-      (Foreign.castForeignPtr @CUChar @Word8 nonceForeignPtr)
-      (fromIntegral @CSize @Int cryptoSecretboxNonceBytes)
+  binaryToHex nonceForeignPtr cryptoSecretboxNonceBytes
 
 -- | A ciphertext consisting of an encrypted message and an authentication tag.
 --
@@ -340,13 +335,14 @@ hashFromHexByteString hexHash = unsafeDupablePerformIO $
 hashToHexText :: Hash -> Text
 hashToHexText = Base16.extractBase16 . Base16.encodeBase16 . hashToBinary
 
--- | Convert a 'Hash' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'Hash' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- ⚠️  Be prudent as to where you store it!
 --
 -- @since 0.0.1.0
 hashToHexByteString :: Hash -> StrictByteString
-hashToHexByteString = Base16.extractBase16 . Base16.encodeBase16' . hashToBinary
+hashToHexByteString (Hash messageLength fPtr) =
+  binaryToHex fPtr (cryptoSecretboxMACBytes + fromIntegral messageLength)
 
 -- | Convert a 'Hash' to a binary 'StrictByteString'.
 --

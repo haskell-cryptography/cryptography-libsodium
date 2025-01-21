@@ -80,7 +80,6 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Builder.Linear as Builder
 import Data.Text.Display (Display (..), OpaqueInstance (..))
-import Data.Word (Word8)
 import Foreign (ForeignPtr, Ptr)
 import qualified Foreign
 import Foreign.C (CChar, CSize, CUChar, CULLong)
@@ -105,6 +104,7 @@ import LibSodium.Bindings.SecretStream
   )
 import LibSodium.Bindings.SecureMemory (finalizerSodiumFree, sodiumMalloc)
 import Sel.Internal (allocateWith, foreignPtrEq, foreignPtrOrd)
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $introduction
 -- This high-level API encrypts a sequence of messages, or a single message split into an arbitrary number of chunks, using a secret key, with the following properties:
@@ -355,17 +355,14 @@ secretKeyFromHexByteString hexSecretKey = unsafeDupablePerformIO $
         else pure $ Left $ Text.pack ("Secret Key is not of size " <> show cryptoSecretStreamXChaCha20Poly1305KeyBytes)
     Left msg -> pure $ Left msg
 
--- | Convert a 'SecretKey' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'SecretKey' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- ⚠️  Be prudent as to where you store it!
 --
 -- @since 0.0.1.0
 unsafeSecretKeyToHexByteString :: SecretKey -> Base16 StrictByteString
 unsafeSecretKeyToHexByteString (SecretKey secretKeyForeignPtr) =
-  Base16.encodeBase16' $
-    BSI.fromForeignPtr0
-      (Foreign.castForeignPtr @CUChar @Word8 secretKeyForeignPtr)
-      (fromIntegral @CSize @Int cryptoSecretStreamXChaCha20Poly1305KeyBytes)
+  Base16.assertBase16 $ binaryToHex secretKeyForeignPtr cryptoSecretStreamXChaCha20Poly1305KeyBytes
 
 -- Prepare memory for a 'SecretKey' and use the provided action to fill it.
 --
@@ -408,15 +405,12 @@ instance Ord Header where
   compare (Header header1) (Header header2) =
     foreignPtrOrd header1 header2 cryptoSecretStreamXChaCha20Poly1305HeaderBytes
 
--- | Convert a 'Header' to a hexadecimal-encoded 'StrictByteString'
+-- | Convert a 'Header' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 headerToHexByteString :: Header -> Base16 StrictByteString
 headerToHexByteString (Header headerForeignPtr) =
-  Base16.encodeBase16' $
-    BSI.fromForeignPtr0
-      (Foreign.castForeignPtr @CUChar @Word8 headerForeignPtr)
-      (fromIntegral @CSize @Int cryptoSecretStreamXChaCha20Poly1305HeaderBytes)
+  Base16.assertBase16 $ binaryToHex headerForeignPtr cryptoSecretStreamXChaCha20Poly1305HeaderBytes
 
 -- | Build a 'Header' from a base16-encoded 'StrictByteString'
 --
@@ -545,15 +539,16 @@ ciphertextFromHexByteString hexCipherText = unsafeDupablePerformIO $
 ciphertextToHexText :: CipherText -> Base16 Text
 ciphertextToHexText = Base16.encodeBase16 . ciphertextToBinary
 
--- | Convert a 'CipherText' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'CipherText' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- ⚠️  Be prudent as to where you store it!
 --
 -- @since 0.0.1.0
 ciphertextToHexByteString :: CipherText -> Base16 StrictByteString
-ciphertextToHexByteString = Base16.encodeBase16' . ciphertextToBinary
+ciphertextToHexByteString (CipherText cipherTextLength fPtr) =
+  Base16.assertBase16 $ binaryToHex fPtr (cryptoSecretStreamXChaCha20Poly1305ABytes + fromIntegral cipherTextLength)
 
--- | Convert a 'CipherText' to a binary 'StrictByteString'.
+-- | Convert a 'CipherText' to a binary 'StrictByteString' in constant time.
 --
 -- ⚠️  Be prudent as to where you store it!
 --

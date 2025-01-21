@@ -65,6 +65,7 @@ import LibSodium.Bindings.GenericHashing
   , cryptoGenericHashUpdate
   )
 import Sel.Internal
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $introduction
 --
@@ -203,11 +204,11 @@ hashByteString mHashKey bytestring =
 hashToHexText :: Hash -> Text
 hashToHexText = Base16.extractBase16 . Base16.encodeBase16 . hashToBinary
 
--- | Convert a 'Hash' to a strict, hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'Hash' to a strict, hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- @since 0.0.1.0
 hashToHexByteString :: Hash -> StrictByteString
-hashToHexByteString = Base16.extractBase16 . Base16.encodeBase16' . hashToBinary
+hashToHexByteString (Hash hashPtr) = binaryToHex hashPtr cryptoGenericHashBytes
 
 -- | Convert a 'Hash' to a strict binary 'StrictByteString'.
 --

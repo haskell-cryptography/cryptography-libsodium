@@ -73,6 +73,7 @@ import qualified Data.Base16.Types as Base16
 import GHC.Generics
 import LibSodium.Bindings.PasswordHashing
 import LibSodium.Bindings.Random
+import Sel.Internal.Sodium (binaryToHex)
 
 -- $introduction
 --
@@ -216,13 +217,14 @@ passwordHashToText passwordHash =
           let !errPos = BS.length bs - BS.length suffix
            in error $ "decodeASCII: detected non-ASCII codepoint " ++ show word ++ " at position " ++ show errPos <> ". " <> show bs
 
--- | Convert a 'PasswordHash' to a hexadecimal-encoded 'StrictByteString'.
+-- | Convert a 'PasswordHash' to a hexadecimal-encoded 'StrictByteString' in constant time.
 --
 -- It is recommended to use this one on a 'PasswordHash' produced by 'hashByteStringWithParams'.
 --
 -- @since 0.0.1.0
 passwordHashToHexByteString :: PasswordHash -> StrictByteString
-passwordHashToHexByteString = Base16.extractBase16 . Base16.encodeBase16' . passwordHashToByteString
+passwordHashToHexByteString (PasswordHash passwordHashForeignPtr) =
+  binaryToHex (Foreign.castForeignPtr @CChar @CUChar passwordHashForeignPtr) cryptoPWHashStrBytes
 
 -- | Convert a 'PasswordHash' to a strict hexadecimal-encoded 'Text'.
 --
